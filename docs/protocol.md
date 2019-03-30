@@ -162,7 +162,9 @@ All positions are based on screen space coordinates. The upper left of the image
 
 This exposes the full fidelty rendered frame buffer that a human player sees.
 
-This interface is not implemented yet in the current release.
+This interface is fully supported on all platforms including Linux. On Linux it supports both hardware and software rendering.
+
+The action interface is very similar to that of feature layers, where the user interface is represented separately.
 
 
 # General
@@ -225,7 +227,7 @@ When resolving a path
 The game simulation is completely deterministic when using the same random seed.
 When the seed is not fixed, there is slight randomness for mostly cosmetic reasons.
 
-For example, these is a tiny amount of randomness in the delay between Marine shots. This makes it so if you have a large group of marines that all start firing together, their shooting will quickly become out of sync and look less robotic.
+For example, there is a tiny amount of randomness in the delay between Marine shots. This makes it so if you have a large group of marines that all start firing together, their shooting will quickly become out of sync and look less robotic.
 
 The order in which units update is also randomized. This makes it so that if two players issue an attack on the exact same frame, it will be random which one performs the damage first and wins.
 
@@ -262,3 +264,55 @@ The in game replay UI exposes this with two different time intervals:
 * Current: Average over the last 5 seconds.
  
 In the score interface, the value exposed corresponds to the Average APM.
+
+
+# Game Versions
+
+## Overview
+
+StarCraft II uses a deterministic game simulation. Replays effectively just contain the user input of all players. When you run a replay, it is re-running the full game simulation by playing back the original user input.
+ 
+This means that to play back the replay deterministically, you need to be running on the exact same version that was used in the original game.
+
+The **Patch Version** (eg. "3.17") corresponds to a specific **Binary Version** and **Data Version**. Patches may update these independently, so they both need to be specified to play back a replay correctly. (eg. There may be multiple data versions that use the same binary version)
+ 
+The **Binary Version** is represented by a **Base Build Number**.
+* On disk, this number is stored in the folder names inside the "Versions" folder.
+* You can have multiple binary versions available inside the same install.
+* This is represented by having a different "BaseXXXXX" subfolders.
+ 
+The **Data Version** is represented by a **Version Hash**.
+* On disk, this hash stored inside of the ".build.info" file.
+* This hash refers to data inside of the SC2Data folder.
+* This folder can contain data from multiple versions inside the same install.
+* However, you can only have 1 active data version. (The one specified inside the .build.info file)
+ 
+By default, it is assumed you will always run the latest **Binary Version**, and the game will automatically use the **Data Version** from inside the .build.info file. If you want to override the **Data Version** being used, it can be passed in with the "-dataVersion" command line option.
+
+In order to watch an old replay:
+1. Launch the correct executable based on the **Base Build Number**.
+2. Pass in the **Data Version** on the command line.
+
+## Finding Version Numbers
+
+All the version information for a replay can be queried using the API with **RequestReplayInfo**.
+* **Patch Version**: RequestReplayInfo::game_version
+* **Binary Version**: RequestReplayInfo::base_build
+* **Data Version**: RequestReplayInfo::data_version
+
+We also provide a static listing of previous patch versions here: [versions.json](../buildinfo/versions.json)
+* **Patch Version**: label
+* **Binary Version**: base-version
+* **Data Version**: data-hash
+
+You can also get the version information of the binary itself using **RequestPing**.
+
+## Downloading Data
+
+On Windows/Mac, only the Binary/Data for the latest patch is guarenteed to be downloaded.
+
+The solution to this is to launch the newest version of the game, and request it to download the required old data for you. This is exposed in the API with this field: RequestReplayInfo::download_data
+
+When playing back a replay using the C++ library, this will automatically be handled for you.
+
+On Linux, this feature is not supported, so the packages already include the Binary/Data for all past versions.
